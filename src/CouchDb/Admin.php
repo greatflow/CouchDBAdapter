@@ -1,7 +1,7 @@
 <?PHP
 
 namespace CouchDbAdapter\CouchDb;
-use CouchDbAdapter\Client\ClientInterface;
+use CouchDbAdapter\Client\Client;
 use InvalidArgumentException;
 
 /**
@@ -13,235 +13,196 @@ use InvalidArgumentException;
  */
 class Admin
 {
-	/** @var ClientInterface */
+	/** @var Server */
+	private $server;
+
+	/** @var Client */
 	private $client;
 
 	/** @var string */
-	private $usersdb;
+	private $usersDb;
+
+	/** @var array */
+	private $options = [];
 
 	/**
-	 * @param ClientInterface $client
-	 * @param array $options array. For now the only option is "users_database" to override the defaults "_users"
+	 * @param Server $server
+	 * @param string $user
+	 * @param string $password
 	 */
-	public function __construct(ClientInterface $client, $options = array())
+	public function __construct(Server $server, $user, $password)
 	{
-		$this->client = $client;
-
-		if (is_array($options) && isset($options["users_database"])) {
-			$this->usersdb = $options["users_database"];
-		} else {
-			$this->usersdb = '_users';
-		}
+		$this->server = $server;
+		$this->client = $server->getClient();
+		$this->setAdminUser($user, $password);
 	}
 
 	/**
-	 * Set the name of the users database (_users by default)
+	 * @param string $username
+	 * @param string $password
+	 */
+	public function setAdminUser($username, $password)
+	{
+		$this->options['user'] = [
+			'username' => $username,
+			'password' => $password
+		];
+	}
+
+	/**
+	 * Set the name of the users database
 	 *
 	 * @param string $name
 	 */
 	public function setUsersDatabase($name)
 	{
-		$this->usersdb = $name;
+		$this->usersDb = $name;
 	}
 
 	/**
 	 * Get the name of the users database this class will use
+	 * If nothing is set, use the couchDB default `_users`
 	 *
 	 * @return string
 	 */
 	public function getUsersDatabase()
 	{
-		return $this->usersdb;
-	}
-
-	/**
-	 * @param array $parts
-	 * @return string
-	 */
-	private function buildUrl(array $parts)
-	{
-		$url = $parts["scheme"] . "://";
-
-		if (! empty($parts["user"])) {
-			$url .= $parts["user"];
-			if (! empty($parts["pass"])) {
-				$url .= ":" . $parts["pass"];
-			}
-			$url .= "@";
+		if (empty($this->usersDb)) {
+			$this->setUsersDatabase('_users');
 		}
 
-		$url .= $parts["host"];
-
-		if (! empty($parts["port"])) {
-			$url .= ":" . $parts["port"];
-		}
-
-		$url .= "/";
-
-		if (! empty($parts["path"])) {
-			$url .= $parts["path"];
-		}
-
-		return $url;
+		return $this->usersDb;
 	}
 
 	/**
 	 * Creates a new CouchDB server administrator
 	 *
-	 * @param string $login administrator login
+	 * @param string $username administrator login
 	 * @param string $password administrator password
 	 * @param array $roles add additional roles to the new admin
 	 *
 	 * @return stdClass CouchDB server response
-	 * @throws InvalidArgumentException|Exception|couchException
+	 * @throws InvalidArgumentException|Exception|CouchDbException
 	 */
-	public function createAdmin($login, $password, $roles = array())
+	public function createAdmin($username, $password, $roles = array())
 	{
-		$login = urlencode($login);
+		$username = urlencode($username);
 		$data = (string) $password;
 
-		if (strlen($login) < 1) {
-			throw new InvalidArgumentException("Login can't be empty");
+		if (strlen($username) < 1) {
+			throw new InvalidArgumentException("Username can't be empty");
 		}
 
 		if (strlen($data) < 1) {
 			throw new InvalidArgumentException("Password can't be empty");
 		}
 
-		$url = '/_config/admins/' . urlencode($login);
+		$url = $this->server->getUrl() . '/_config/admins/' . urlencode($username);
 
 		try {
-			$raw = $this->client->sendRequest(
-				"PUT",
-				$url,
-				[200],
-				json_encode($data)
-			);
+			$this->client->put($url, [200], $this->options);
 		} catch (Exception $e) {
 			throw $e;
 		}
 
-		$dsn = $this->client->dsn_part();
-		$dsn["user"] = $login;
-		$dsn["pass"] = $password;
+		$database = $this->server->{$this->usersDb};
+		$userDocument = $database->createDoc("org.couchdb.user:" . $username);
+		$userDocument->name = $username;
+		$userDocument->type = "user";
+		$userDocument->roles = $roles;
 
-		$client = new CouchClient($this->buildUrl($dsn), $this->usersdb, $this->client->options());
-
-		$user = new stdClass();
-		$user->name = $login;
-		$user->type = "user";
-		$user->roles = $roles;
-		$user->_id = "org.couchdb.user:" . $login;
-
-		return $client->storeDoc($user);
+		$userDocument->save();
 	}
 
 	/**
 	 * Permanently removes a CouchDB Server administrator
 	 *
-	 * @param string $login administrator login
-	 * @return stdClass CouchDB server response
+	 * @param string $username administrator login
 	 * @throws InvalidArgumentException|couchException
 	 */
-	public function deleteAdmin($login)
+	public function deleteAdmin($username)
 	{
-		$login = urlencode($login);
-		if (strlen($login) < 1) {
-			throw new InvalidArgumentException("Login can't be empty");
+		$username = urlencode($username);
+		if (strlen($username) < 1) {
+			throw new InvalidArgumentException("Username can't be empty");
 		}
 
-		try {
-			$client = new couchClient($this->client->dsn(), $this->usersdb);
-			$doc = $client->getDoc("org.couchdb.user:" . $login);
-			$client->deleteDoc($doc);
-		} catch (Exception $e) {
-		}
+		$database = $this->server->{$this->usersDb};
+		$userDocument = $database->createDoc("org.couchdb.user:" . $username);
+		$userDocument->delete();
 
-		$url = '/_config/admins/' . urlencode($login);
-		$raw = $this->client->query(
-			"DELETE",
-			$url
-		);
-
-		$resp = couch::parseRawResponse($raw);
-		if ($resp['status_code'] != 200) {
-			throw new couchException($raw);
-		}
-
-		return $resp["body"];
+		$url = '/_config/admins/' . urlencode($username);
+		$this->client->delete($url, [200], $this->options);
 	}
 
 	/**
 	 * Create a user
 	 *
-	 * @param string $login user login
+	 * @param string $username user login
 	 * @param string $password user password
 	 * @param array $roles add additional roles to the new user
 	 *
 	 * @return stdClass CouchDB user creation response (the same as a document storage response)
 	 * @throws InvalidArgumentException
 	 */
-	public function createUser($login, $password, $roles = array())
+	public function createUser($username, $password, $roles = array())
 	{
 		$password = (string) $password;
-		if (strlen($login) < 1) {
-			throw new InvalidArgumentException("Login can't be empty");
+		if (strlen($username) < 1) {
+			throw new InvalidArgumentException("Username can't be empty");
 		}
 
 		if (strlen($password) < 1) {
 			throw new InvalidArgumentException("Password can't be empty");
 		}
 
-		$user = new stdClass();
-		$user->salt = sha1(microtime() . mt_rand(1000000, 9999999), false);
-		$user->password_sha = sha1($password . $user->salt, false);
-		$user->name = $login;
-		$user->type = "user";
-		$user->roles = $roles;
-		$user->_id = "org.couchdb.user:" . $login;
+		$database = $this->server->{$this->usersDb};
+		$userDocument = $database->createDoc("org.couchdb.user:" . $username);
+		$userDocument->name = $username;
+		$userDocument->type = "user";
+		$userDocument->roles = $roles;
 
-		$client = new CouchClient($this->client->dsn(), $this->usersdb, $this->client->options());
-
-		return $client->storeDoc($user);
+		$userDocument->save();
 	}
 
 
 	/**
 	 * Permanently removes a CouchDB User
 	 *
-	 * @param string $login user login
+	 * @param string $username user login
 	 *
 	 * @return stdClass CouchDB server response
 	 * @throws InvalidArgumentException
 	 */
-	public function deleteUser($login)
+	public function deleteUser($username)
 	{
-		if (strlen($login) < 1) {
-			throw new InvalidArgumentException("Login can't be empty");
+		if (strlen($username) < 1) {
+			throw new InvalidArgumentException("Username can't be empty");
 		}
-		$client = new CouchClient($this->client->dsn(), $this->usersdb);
-		$doc = $client->getDoc("org.couchdb.user:" . $login);
 
-		return $client->deleteDoc($doc);
+		$database = $this->server->{$this->usersDb};
+		$userDocument = $database->createDoc("org.couchdb.user:" . $username);
+
+		$userDocument->delete();
 	}
 
 	/**
 	 * Returns the document of a user
 	 *
-	 * @param string $login login of the user to fetch
+	 * @param string $username login of the user to fetch
 	 *
 	 * @return stdClass CouchDB document
 	 * @throws InvalidArgumentException
 	 */
-	public function getUser($login)
+	public function getUser($username)
 	{
-		if (strlen($login) < 1) {
-			throw new InvalidArgumentException("Login can't be empty");
+		if (strlen($username) < 1) {
+			throw new InvalidArgumentException("Username can't be empty");
 		}
 
 		$client = new CouchClient($this->client->dsn(), $this->usersdb, $this->client->options());
 
-		return $client->getDoc("org.couchdb.user:" . $login);
+		return $client->getDoc("org.couchdb.user:" . $username);
 	}
 
 	/**

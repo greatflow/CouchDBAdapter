@@ -1,35 +1,53 @@
 <?php
 namespace CouchDbAdapter\Client\Guzzle;
 
-use CouchDbAdapter\Client\Client;
+use CouchDbAdapter\Client\ClientInterface;
 use CouchDbAdapter\Client\CouchDbClientExceptionFactory;
+use CouchDbAdapter\CouchDb\Document;
+use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
+use InvalidArgumentException;
 
-class GuzzleClient extends Client
+class GuzzleClient implements ClientInterface
 {
+	/** @var Client */
+	private $client;
+
 	/** @var bool */
 	private $debug = false;
 
+	/**
+	 * @param Client $client
+	 */
+	public function __construct(Client $client)
+	{
+		$this->client = $client;
+	}
+
+	/**
+	 * @param bool $level
+	 * @throws InvalidArgumentException
+	 */
 	public function setDebugLevel($level)
 	{
 		if (! is_bool($level)) {
-			throw new InvalidArgumentExceptio('The debug level must be a boolean value');
+			throw new InvalidArgumentException('The debug level must be a boolean value');
 		}
 
 		$this->debug = $level;
 	}
 
 	/**
-	 * @param string $authToken
+	 * @param array $authToken
 	 * @return CookieJar
 	 */
-	private function buildAuthCookie($authToken)
+	private function buildAuthCookie(array $authToken)
 	{
 		$cookie = new SetCookie();
-		$cookie->setDomain('192.168.0.8');
-		$cookie->setName('AuthSession');
-		$cookie->setValue($authToken);
+		$cookie->setDomain($authToken['cookieDomain']);
+		$cookie->setName($authToken['cookieName']);
+		$cookie->setValue($authToken['cookieValue']);
 
 		return new CookieJar(false, [
 			$cookie
@@ -37,30 +55,33 @@ class GuzzleClient extends Client
 	}
 
 	/**
-	 * @param array $request
+	 * @param string $method
+	 * @param string $url
+	 * @param Document|null $couchDbDocument
+	 * @param array $options
 	 * @return GuzzleResponse
 	 */
-	protected function sendRequestToClient(array $request)
+	public function request($method, $url, Document $couchDbDocument = null, $options = [])
 	{
+		$options = $this->buildRequestOptions($couchDbDocument, $options);
+
 		$guzzleResponse = $this->client->request(
-			$request['method'],
-			$request['database'],
-			$request['options']
+			$method,
+			$url,
+			$options
 		);
 
 		return new GuzzleResponse($guzzleResponse);
 	}
 
 	/**
-	 * @param string $method
-	 * @param string $database
-	 * @param $couchDbDocument
-	 * @param string $authToken
+	 * @param Document $couchDbDocument
+	 * @param array $options
 	 * @return array
 	 */
-	protected function buildClientRequest($method, $database, $couchDbDocument, $authToken)
+	protected function buildRequestOptions(Document $couchDbDocument, $options)
 	{
-		$options = [
+		$requestOptions = [
 			'json' => [
 				'user' => 'test',
 				'something' => 'this is a new test',
@@ -68,21 +89,21 @@ class GuzzleClient extends Client
 			]
 		];
 
-		if (isset($authToken)) {
-			$options['headers'] = ['X-CouchDB-WWW-Authenticate' => 'Cookie'];
-			$options['cookies'] = $this->buildAuthCookie($authToken);
+		if (isset($options['authToken'])) {
+			$requestOptions['headers'] = ['X-CouchDB-WWW-Authenticate' => 'Cookie'];
+			$requestOptions['cookies'] = $this->buildAuthCookie($requestOptions['authToken']);
+		}
+
+		if (isset($options['user'])) {
+			$requestOptions['auth'] = [
+				$options['auth']['username'] => $options['auth']['password']
+			];
 		}
 
 		if ($this->debug) {
-			$options['debug'] = true;
+			$requestOptions['debug'] = true;
 		}
 
-		$request = [
-			'method' => $method,
-			'database' => $database,
-			'options' => $options
-		];
-
-		return $request;
+		return $requestOptions;
 	}
 }

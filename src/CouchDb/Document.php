@@ -5,32 +5,100 @@ namespace CouchDbAdapter\CouchDb;
 
 class Document
 {
+	/** @var Client */
+	private $client;
+
+	/** @var Database */
+	private $database;
+
+	/** @var array */
+	private $columns = [];
+
+	/**
+	 * @param Client $client
+	 * @param Database $database
+	 */
+	public function __construct(Client $client, Database $database)
+	{
+		$this->client = $client;
+		$this->database = $database;
+	}
+
+	/**
+	 * @param string $name
+	 * @param string $value
+	 */
+	public function __set($name, $value)
+	{
+		if ($name = '_id' && isset($this->columns['_id'])) {
+			throw new \InvalidArgumentException('Document id is immutable');
+		}
+
+		$this->columns[$name] = (string) $value;
+	}
+
+	/**
+	 * @param string $name
+	 * @return mixed
+	 */
+	public function _get($name)
+	{
+		if (isset($this->columns[$name])) {
+			return $this->columns[$name];
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param array $data [ColumnName => Value]
+	 */
+	public function populateFromArray(array $data)
+	{
+		foreach ($data as $column => $value) {
+			$this->columns[$column] = $value;
+		}
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getColumnsAndData()
+	{
+		return $this->columns;
+	}
+
 	/**
 	 * Create a new document with the same properties as this one
 	 *
 	 * @param string [$id]
-	 * @return Dwin_Couch_Document
+	 * @return Document
 	 */
 	public function dupe($id = null)
 	{
-		$data = $this->_data;
-		foreach ($data as $key => $value) if ($key[0] == '_') unset($data[$key]);
-		return $this->_db->createDoc($id)->populate($data);
+		$columnsCopy = $this->columns;
+		foreach ($columnsCopy as $column => $value) {
+			if ($column[0] == '_') {
+				unset($columnsCopy[$column]);
+			}
+		}
+
+		return $this->database->createDoc($id)->populateFromArray($columnsCopy);
 	}
 
 	/**
-	 * Save the document (back) to the database
+	 * Save the document
 	 */
 	public function save()
 	{
-		if (isset($this->_id)) {
-			$response = $this->_client->put($this->_db->getDocUrl($this->_id), $this);
+		if (isset($this->columns['_id'])) {
+			$response = $this->client->put($this->database->getDocUrl($this->_id), [201]);
 		} else {
-			$response = $this->_client->post($this->_db->getUrl(), $this);
-			$this->_data['_id'] = $response->id;
+			$response = $this->client->post($this->database->getUrl(), $this);
+			$this->_id = $response->id;
 		}
 
-		$this->_data['_rev'] = $response->rev;
+		$this->_rev = $response->rev;
 	}
 
 	/**
@@ -38,17 +106,17 @@ class Document
 	 */
 	public function delete()
 	{
-		if (!isset($this->_id)) {
+		if (!isset($this->columns['_id'])) {
 			throw new BadMethodCallException("Cannot delete document without an ID");
 		}
 
-		if (!isset($this->_rev)) {
+		if (!isset($this->columns['_rev'])) {
 			throw new BadMethodCallException("Cannot delete document without a revision number");
 		}
 
-		$this->_client->delete($this->_db->getDocUrl($this->_id, array('rev' => $this->_rev)));
+		$this->client->delete($this->database->getDocUrl($this->_id, array('rev' => $this->_rev)));
 
-		unset($this->_data['_rev']);
+		unset($this->columns['_rev']);
 	}
 
 	/**
@@ -65,7 +133,7 @@ class Document
 		if (!$attachment) return null;
 
 		if ($attachment->stub) {
-			return $this->_client->rawRequest('GET', $this->_db->getAttachmentUrl($this->_id, $name));
+			return $this->client->rawRequest('GET', $this->database->getAttachmentUrl($this->_id, $name));
 		} else {
 			return base64_decode($attachment->data);
 		}

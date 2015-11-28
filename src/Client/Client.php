@@ -3,6 +3,7 @@
 namespace CouchDbAdapter\Client;
 
 use CouchDbAdapter\Client\Guzzle;
+use CouchDbAdapter\CouchDb\Document;
 use InvalidArgumentException;
 
 class Client
@@ -18,34 +19,38 @@ class Client
 
 	protected $client;
 
-	/** @var string */
-	protected $dsn;
-
 	/**
 	 * @param ClientInterface $client The client that will send requests to the CouchDB server
-	 * @param $dsn The location of the CouchDB server
 	 */
-	public function __construct(ClientInterface $client, $dsn)
+	public function __construct(ClientInterface $client)
 	{
 		$this->client = $client;
-		$this->dsn = $dsn;
+	}
+
+	/**
+	 * @param string $name
+	 * @param array $args
+	 * @return mixed
+	 */
+	public function __call($name, array $args)
+	{
+		array_unshift($args, strtoupper($name));
+		return call_user_func_array(array($this, 'sendRequest'), $args);
 	}
 
 	/**
 	 * @param string $method
-	 * @param string $database
+	 * @param string $url
 	 * @param array $expectedResponseCodes
-	 * @param null $couchDbDocument
-	 * @param null $authToken
+	 * @param array $options
+	 * @param Document|null $couchDbDocument
 	 * @return mixed
 	 */
-	public function sendRequest($method, $database, array $expectedResponseCodes, $couchDbDocument = null, $authToken = null)
+	private function sendRequest($method, $url, array $expectedResponseCodes, $options = [], Document $couchDbDocument = null)
 	{
 		$this->isValidMethod($method);
 
-		$response = $this->client->request($method, $database, $couchDbDocument, $authToken);
-
-		$url = $this->dsn . '/' . $database;
+		$response = $this->client->request($method, $url, $couchDbDocument, $options);
 
 		return $this->handleResponse($response, $method, $expectedResponseCodes, $url);
 	}

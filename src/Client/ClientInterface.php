@@ -8,11 +8,11 @@ interface ClientInterface
 {
 	/**
 	 * @param string $method
-	 * @param string $database
+	 * @param string $url
 	 * @param Document $couchDbDocument
-	 * @param null|string $authToken
+	 * @param array $options
 	 *
 	 * @return ResponseInterface
 	 */
-	public function request($method, $database, Document $couchDbDocument = null, $authToken = null);
+	public function request($method, $url, Document $couchDbDocument = null, $options = []);
 }
