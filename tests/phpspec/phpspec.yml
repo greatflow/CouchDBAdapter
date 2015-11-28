@@ -1,0 +1,7 @@
+suites:
+    Main:
+        namespace: GuzzleCouchDb
+        spec_prefix: GuzzleCouchDbSpec
+        src_path: src/
+        spec_path:  tests/phpspec/
+        psr4_prefix: GuzzleCouchDb

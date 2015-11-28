@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit colors="true">
+
+    <php>
+        <ini name="memory_limit" value="768M" />
+    </php>
+
+    <testsuites>
+        <testsuite name="IntegrationTests">
+            <directory>IntegrationTest</directory>
+        </testsuite>
+        <testsuite name="UnitTests">
+            <directory>UnitTest</directory>
+        </testsuite>
+        <testsuite name="All">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+
+    <filter>
+        <whitelist>
+            <directory suffix=".php">../../src/</directory>
+        </whitelist>
+    </filter>
+
+</phpunit>
