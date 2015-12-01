@@ -67,7 +67,7 @@ class Server
 	 * @param string $name
 	 * @return Database
 	 */
-	public function __get($name)
+	public function getDatabase($name)
 	{
 		return new Database($this->client, $this, $name);
 	}
@@ -77,7 +77,7 @@ class Server
 	 */
 	public function ping()
 	{
-		return $this->client->get($this->getUrl(), [200], $this->options);
+		return $this->client->get($this->getUrl(), 200, $this->options);
 	}
 
 	/**
@@ -85,7 +85,7 @@ class Server
 	 */
 	public function listDbs()
 	{
-		return $this->client->get($this->getUrl() . '/_all_dbs', [200], $this->options);
+		return $this->client->get($this->getUrl() . '/_all_dbs', 200, $this->options);
 	}
 
 	/**
@@ -94,7 +94,7 @@ class Server
 	 */
 	public function createDb($name)
 	{
-		$this->client->put($this->getUrl() . '/' . urlencode($name) . '/', [200], $this->options);
+		$this->client->put($this->getUrl() . '/' . urlencode($name) . '/', 200, $this->options);
 		return $this->$name;
 	}
 

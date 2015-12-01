@@ -63,7 +63,7 @@ class GuzzleClient implements ClientInterface
 	 */
 	public function request($method, $url, Document $couchDbDocument = null, $options = [])
 	{
-		$options = $this->buildRequestOptions($couchDbDocument, $options);
+		$options = $this->buildRequestOptions($options, $couchDbDocument);
 
 		$guzzleResponse = $this->client->request(
 			$method,
@@ -79,7 +79,7 @@ class GuzzleClient implements ClientInterface
 	 * @param array $options
 	 * @return array
 	 */
-	protected function buildRequestOptions(Document $couchDbDocument, $options)
+	protected function buildRequestOptions($options, Document $couchDbDocument = null)
 	{
 		$requestOptions = [
 			'json' => [

@@ -46,7 +46,7 @@ class Client
 	 * @param Document|null $couchDbDocument
 	 * @return mixed
 	 */
-	private function sendRequest($method, $url, array $expectedResponseCodes, $options = [], Document $couchDbDocument = null)
+	private function sendRequest($method, $url, $expectedResponseCodes, $options, Document $couchDbDocument = null)
 	{
 		$this->isValidMethod($method);
 
@@ -69,18 +69,18 @@ class Client
 	/**
 	 * @param ResponseInterface $response
 	 * @param $method
-	 * @param array $expectedResponseCodes
+	 * @param int $expectedResponseCode
 	 * @param $url
 	 * @return mixed
 	 * @throw CouchDbAdapter\Exceptions\CouchDbException
 	 */
-	private function handleResponse(ResponseInterface $response, $method, array $expectedResponseCodes, $url)
+	private function handleResponse(ResponseInterface $response, $method, $expectedResponseCode, $url)
 	{
 		$response = $this->parseResponse($response);
 		$statusCode = $response['statusCode'];
 
-		if (in_array($statusCode, $expectedResponseCodes)) {
-			return $response['body'];
+		if ($statusCode == $expectedResponseCode) {
+			return json_decode($response['body']);
 		}
 
 		throw ClientExceptionFactory::factory($response, $method, $url);
