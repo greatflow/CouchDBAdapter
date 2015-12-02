@@ -7,6 +7,7 @@ use CouchDbAdapter\CouchDb\Document;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
+use GuzzleHttp\Exception\RequestException;
 use InvalidArgumentException;
 
 class GuzzleClient implements ClientInterface
@@ -65,11 +66,15 @@ class GuzzleClient implements ClientInterface
 	{
 		$options = $this->buildRequestOptions($options, $document);
 
-		$guzzleResponse = $this->client->request(
-			$method,
-			$url,
-			$options
-		);
+        try {
+            $guzzleResponse = $this->client->request(
+                $method,
+                $url,
+                $options
+            );
+        } catch (RequestException $exception) {
+            $guzzleResponse = $exception->getResponse();
+        }
 
 		return new GuzzleResponse($guzzleResponse);
 	}
@@ -85,7 +90,7 @@ class GuzzleClient implements ClientInterface
 
         if (isset($document)) {
             $requestOptions = [
-                'json' => $document->getColumnsAndData()
+                'json' => $document->getData()
             ];
         }
 
@@ -108,7 +113,7 @@ class GuzzleClient implements ClientInterface
 		if ($this->debug) {
 			$requestOptions['debug'] = true;
 		}
-var_dump($requestOptions);
+
 		return $requestOptions;
 	}
 }

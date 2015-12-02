@@ -10,7 +10,7 @@ class Document
     const RESERVED_COLUMNS = ['_id', '_rev', '_attachments', '_deleted'];
 
 	/** @var array */
-	private $columns = [];
+	private $data = [];
 
     public function __construct($id = null)
     {
@@ -49,7 +49,7 @@ class Document
             throw new InvalidArgumentException("$columnName is a reserved key. Please use the $method method");
         }
 
-        $this->columns[$columnName] = $value;
+        $this->data[$columnName] = $value;
         return $this;
     }
 
@@ -66,58 +66,58 @@ class Document
             throw new InvalidArgumentException("$columnName is a reserved key. Please use the $method method");
         }
 
-        if (isset($this->columns[$columnName])) {
-            return $this->columns[$columnName];
+        if (isset($this->data[$columnName])) {
+            return $this->data[$columnName];
         }
     }
 
     public function setId($id)
     {
-        if (isset($this->columns['_id'])) {
+        if (isset($this->data['_id'])) {
             throw new InvalidArgumentException('Document id is immutable');
         }
 
-        $this->columns['_id'] = (string) $id;
+        $this->data['_id'] = (string) $id;
 
         return $this;
     }
 
     public function getId()
     {
-        if (isset($this->columns['_id'])) {
-            return $this->columns['_id'];
+        if (isset($this->data['_id'])) {
+            return $this->data['_id'];
         }
     }
 
     public function setRev($rev)
     {
-        $this->columns['_rev'] = $rev;
+        $this->data['_rev'] = $rev;
 
         return $this;
     }
 
     public function getRev()
     {
-        if (isset($this->columns['_rev'])) {
-            return $this->columns['_rev'];
+        if (isset($this->data['_rev'])) {
+            return $this->data['_rev'];
         }
     }
 
     public function unsetRev()
     {
-        unset($this->columns['_rev']);
+        unset($this->data['_rev']);
     }
 
     public function setAttachment($attachment)
     {
-        $this->columns['_attachments'] = $attachment;
+        $this->data['_attachments'] = $attachment;
 
         return $this;
     }
 
     public function getAttachment()
     {
-        return $this->columns['_attachments'];
+        return $this->data['_attachments'];
     }
 
 	/**
@@ -126,16 +126,16 @@ class Document
 	public function populateFromArray(array $data)
 	{
 		foreach ($data as $column => $value) {
-			$this->columns[$column] = $value;
+			$this->data[$column] = $value;
 		}
 	}
 
 	/**
 	 * @return array
 	 */
-	public function getColumnsAndData()
+	public function getData()
 	{
-		return $this->columns;
+		return $this->data;
 	}
 
 //	/**

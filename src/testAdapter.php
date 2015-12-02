@@ -24,10 +24,20 @@ if (! in_array($dbName, $availDatabases)) {
     $database = $couchDbServer->getDatabase($dbName);
 }
 
-$document = $database->copyDocument(124, 1234);
 
-$document->setNewProperty('Test worked :)');
-$database->saveDocument($document);
+//$document = $database->getDocumentById(123456);
+//var_dump($document);
+//$database->saveDocument($document);
+$documents = $database->getAllDocuments(true);
+
+foreach ($documents as $document) {
+    var_dump($document);
+}
+
+//$document = $database->copyDocument(124, 1234);
+
+//$document->setNewProperty('Test worked :)');
+//$database->saveDocument($document);
 
 
 //$document = $database->getDocument(124);

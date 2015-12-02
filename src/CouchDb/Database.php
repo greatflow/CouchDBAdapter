@@ -3,6 +3,7 @@
 namespace CouchDbAdapter\CouchDb;
 
 use CouchDbAdapter\Client\Client;
+use CouchDbAdapter\Exceptions\CouchDbException;
 
 class Database
 {
@@ -43,27 +44,52 @@ class Database
 		return $this->getDocument($newDocumentId);
 	}
 
-	public function getAllDocuments()
+	public function getAllDocuments($includeDocs = false)
 	{
-		return $this->client->get($this->getUrl() . '/_all_docs', 200, $this->server->getOptions());
+        $url = $this->getDatabaseUrl() . '/_all_docs';
+        if ($includeDocs) {
+            $url .= '?include_docs=true';
+        }
+		$response =  $this->client->get($url, 200, $this->server->getOptions());
+
+        if ($includeDocs) {
+            $documentCollection = new DocumentCollection();
+            foreach ($response['rows'] as $documentArray) {
+                $document = new Document();
+                $document->populateFromArray($documentArray['doc']);
+                $documentCollection->addDocument($document);
+            }
+            $response = $documentCollection;
+        }
+
+        return $response;
 	}
 
+    /**
+     * Saves or updates the document to the database
+     * @param Document $document
+     */
     public function saveDocument(Document $document)
     {
-        $data = $document->getColumnsAndData();
+        $data = $document->getData();
         if (isset($data['_id'])) {
-            $response = $this->client->put($this->getDocUrl($data['_id']), 201, $this->server->getOptions(), $document);
+            $response = $this->client->put($this->getDocumentUrl($data['_id']), 201, $this->server->getOptions(), $document);
         } else {
-            $response = $this->client->post($this->getUrl(), 201, $this->server->getOptions(), $document);
+            $response = $this->client->post($this->getDatabaseUrl(), 201, $this->server->getOptions(), $document);
             $document->setId($response['id']);
         }
 
         $document->setRev($response['rev']);
     }
 
+    /**
+     * Deletes the document. CouchDB will still retain a copy though
+     * @param Document $document
+     * @throws BadMethodCallException
+     */
     public function deleteDocument(Document $document)
     {
-        $data = $document->getColumnsAndData();
+        $data = $document->getData();
         if (! isset($data['_id'])) {
             throw new BadMethodCallException("Cannot delete document without an ID");
         }
@@ -72,8 +98,7 @@ class Database
             throw new BadMethodCallException("Cannot delete document without a revision number");
         }
 
-        $this->client->delete($this->getDocUrl($data['_id'], array('rev' => $document->getRev())), 200, $this->server->getOptions());
-
+        $this->client->delete($this->getDocumentUrl($data['_id'], array('rev' => $document->getRev())), 200, $this->server->getOptions());
         $document->unsetRev();
     }
 
@@ -82,26 +107,37 @@ class Database
 	 */
 	public function deleteDatabase()
 	{
-		$this->client->delete($this->getUrl() . '/', 200, $this->server->getOptions());
+		$this->client->delete($this->getDatabaseUrl() . '/', 200, $this->server->getOptions());
 	}
 
-    public function getDocument($id)
+    /**
+     * @param $id
+     * @return Document
+     *
+     * @throws CouchDbException
+     */
+    public function getDocumentById($id)
     {
         try {
-            $response = $this->client->get($this->getDocUrl($id), 200, $this->server->getOptions());
-
+            $response = $this->client->get($this->getDocumentUrl($id), 200, $this->server->getOptions());
             $document = new Document();
             $document->populateFromArray($response);
             return $document;
-        } catch (Exception $e) {
-            return false;
+        } catch (CouchDbException $exception) {
+            // If exception was a 404 the document was not found. So we can create one using $id
+            if ($exception->getCode() == 404) {
+                $document = new Document($id);
+                return $document;
+            } else {
+                throw $exception;
+            }
         }
     }
 
 	/**
 	 * @return string
 	 */
-	public function getUrl()
+	public function getDatabaseUrl()
 	{
 		return $this->server->getUrl() . '/' . urlencode($this->dbName);
 	}
@@ -111,8 +147,8 @@ class Database
 	 * @param array $args
 	 * @return string
 	 */
-	public function getDocUrl($id, $args = array())
+	public function getDocumentUrl($id, $args = array())
 	{
-		return $this->getUrl() . '/' . urlencode($id)  . ($args ? '?' . http_build_query($args) : '');
+		return $this->getDatabaseUrl() . '/' . urlencode($id)  . ($args ? '?' . http_build_query($args) : '');
 	}
 }
