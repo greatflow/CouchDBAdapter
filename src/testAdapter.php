@@ -15,7 +15,6 @@ $couchDbClient = new Client($guzzleClient);
 
 $couchDbServer = new Server($couchDbClient, '127.0.0.1');
 $couchDbServer->setAdminUser('admin', 'b0110ck5');
-//
 
 $availDatabases = $couchDbServer->listDbs();
 $dbName = 'test';
@@ -25,18 +24,26 @@ if (! in_array($dbName, $availDatabases)) {
     $database = $couchDbServer->getDatabase($dbName);
 }
 
+$document = $database->copyDocument(124, 1234);
 
-$document = new Document(124);
-$document->setSurname('Pye')
-         ->setAnotherField('Test');
-
-
+$document->setNewProperty('Test worked :)');
 $database->saveDocument($document);
 
-$database->deleteDocument($document);
 
-$document->setNewProperty('I\'m back motherfuckers');
-
-$database->saveDocument($document);
-
-var_dump($document);
+//$document = $database->getDocument(124);
+//
+//if ($document === false) {
+//    $document = new Document(124);
+//    $document->setSurname('Pye')
+//             ->setAnotherField('Test');
+//}
+//
+//$database->saveDocument($document);
+//
+//$database->deleteDocument($document);
+//
+//$document->setNewProperty('WTF');
+//
+//$database->saveDocument($document);
+//
+//var_dump($document);

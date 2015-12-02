@@ -29,19 +29,21 @@ class Database
 
 	/**
 	 * @param string $id
-	 * @param string $newId
+	 * @param string $newDocumentId
 	 * @param string $rev
+     * @return Document
 	 */
-	public function copyDoc($id, $newId, $rev = null)
+	public function copyDocument($id, $newDocumentId, $rev = null)
 	{
-		$result = $this->client->copy(
-			$this->getDocUrl($id), null,
-			array('Destination' => $newId . ($rev ? "?rev={$rev}" : ''))
-		);
-		return $result->rev;
+        $options = $this->server->getOptions();
+        $options['headers'] = ['Destination' => $newDocumentId . ($rev ? "?rev={$rev}" : '')];
+
+		$this->client->copy($this->getDocUrl($id), 201, $options);
+
+		return $this->getDocument($newDocumentId);
 	}
 
-	public function getAllDocs()
+	public function getAllDocuments()
 	{
 		return $this->client->get($this->getUrl() . '/_all_docs', 200, $this->server->getOptions());
 	}
@@ -53,9 +55,10 @@ class Database
             $response = $this->client->put($this->getDocUrl($data['_id']), 201, $this->server->getOptions(), $document);
         } else {
             $response = $this->client->post($this->getUrl(), 201, $this->server->getOptions(), $document);
-            $document->setId($response->id);
+            $document->setId($response['id']);
         }
-        $document->setRev($response->rev);
+
+        $document->setRev($response['rev']);
     }
 
     public function deleteDocument(Document $document)
@@ -74,7 +77,6 @@ class Database
         $document->unsetRev();
     }
 
-
 	/**
 	 * Delete this database
 	 */
@@ -83,16 +85,18 @@ class Database
 		$this->client->delete($this->getUrl() . '/', 200, $this->server->getOptions());
 	}
 
-	/**
-	 * Gets the current revision of a document without fetching it
-	 *
-	 * @param string $id
-	 * @return string
-	 */
-	public function getCurrentRevision($id)
-	{
-		return json_decode($this->client->head($this->getDocUrl($id), 200), $this->server->getOptions());
-	}
+    public function getDocument($id)
+    {
+        try {
+            $response = $this->client->get($this->getDocUrl($id), 200, $this->server->getOptions());
+
+            $document = new Document();
+            $document->populateFromArray($response);
+            return $document;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
 
 	/**
 	 * @return string

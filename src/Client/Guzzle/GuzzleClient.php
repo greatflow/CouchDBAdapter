@@ -57,13 +57,13 @@ class GuzzleClient implements ClientInterface
 	/**
 	 * @param string $method
 	 * @param string $url
-	 * @param Document|null $couchDbDocument
+	 * @param Document $document
 	 * @param array $options
 	 * @return GuzzleResponse
 	 */
-	public function request($method, $url, $options, Document $couchDbDocument = null)
+	public function request($method, $url, array $options, Document $document = null)
 	{
-		$options = $this->buildRequestOptions($options, $couchDbDocument);
+		$options = $this->buildRequestOptions($options, $document);
 
 		$guzzleResponse = $this->client->request(
 			$method,
@@ -75,20 +75,26 @@ class GuzzleClient implements ClientInterface
 	}
 
 	/**
-	 * @param Document $couchDbDocument
+	 * @param Document $document
 	 * @param array $options
 	 * @return array
 	 */
-	protected function buildRequestOptions($options, Document $couchDbDocument = null)
+	protected function buildRequestOptions($options, Document $document = null)
 	{
-        if (isset($couchDbDocument)) {
+        $requestOptions = ['headers' => []];
+
+        if (isset($document)) {
             $requestOptions = [
-                'json' => $couchDbDocument->getColumnsAndData()
+                'json' => $document->getColumnsAndData()
             ];
         }
 
+        if (isset($options['headers'])) {
+            $requestOptions['headers'] += $options['headers'];
+        }
+
 		if (isset($options['authToken'])) {
-			$requestOptions['headers'] = ['X-CouchDB-WWW-Authenticate' => 'Cookie'];
+			$requestOptions['headers'] += ['X-CouchDB-WWW-Authenticate' => 'Cookie'];
 			$requestOptions['cookies'] = $this->buildAuthCookie($requestOptions['authToken']);
 		}
 
@@ -102,7 +108,7 @@ class GuzzleClient implements ClientInterface
 		if ($this->debug) {
 			$requestOptions['debug'] = true;
 		}
-
+var_dump($requestOptions);
 		return $requestOptions;
 	}
 }

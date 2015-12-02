@@ -43,14 +43,14 @@ class Client
 	 * @param string $url
 	 * @param array $expectedResponseCodes
 	 * @param array $options
-	 * @param Document|null $couchDbDocument
+	 * @param Document|nulll $document
 	 * @return mixed
 	 */
-	private function sendRequest($method, $url, $expectedResponseCodes, $options, Document $couchDbDocument = null)
+	private function sendRequest($method, $url, $expectedResponseCodes, $options, Document $document = null)
 	{
 		$this->isValidMethod($method);
 
-		$response = $this->client->request($method, $url, $options, $couchDbDocument);
+		$response = $this->client->request($method, $url, $options, $document);
 
 		return $this->handleResponse($response, $method, $expectedResponseCodes, $url);
 	}
@@ -80,7 +80,7 @@ class Client
 		$statusCode = $response['statusCode'];
 
 		if ($statusCode == $expectedResponseCode) {
-			return json_decode($response['body']);
+			return json_decode($response['body'], true);
 		}
 
 		throw ClientExceptionFactory::factory($response, $method, $url);
