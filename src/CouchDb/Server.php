@@ -21,6 +21,9 @@ class Server
 	/** @var array */
 	private $options = [];
 
+    /** @var string */
+    private $usersDb;
+
 	/**
 	 * @param Client $client
 	 * @param string $host
@@ -34,6 +37,43 @@ class Server
 		$this->port = $port;
 		$this->https = $https;
 	}
+
+    /**
+     * @param string $username
+     * @param string $password
+     */
+    public function setAdminUser($username, $password)
+    {
+        $this->options['user'] = [
+            'username' => $username,
+            'password' => $password
+        ];
+    }
+
+    /**
+     * Set the name of the users database
+     *
+     * @param string $name
+     */
+    public function setUsersDatabase($name)
+    {
+        $this->usersDb = $name;
+    }
+
+    /**
+     * Get the name of the users database this class will use
+     * If nothing is set, use the couchDB default `_users`
+     *
+     * @return string
+     */
+    public function getUsersDatabase()
+    {
+        if (empty($this->usersDb)) {
+            $this->setUsersDatabase('_users');
+        }
+
+        return $this->usersDb;
+    }
 
 	/**
 	 * @return Client
@@ -92,10 +132,10 @@ class Server
 	 * @param string $name
 	 * @return Database
 	 */
-	public function createDb($name)
+	public function createDatabase($name)
 	{
-		$this->client->put($this->getUrl() . '/' . urlencode($name) . '/', 200, $this->options);
-		return $this->$name;
+		$this->client->put($this->getUrl() . '/' . urlencode($name) . '/', 201, $this->options);
+		return $this->getDatabase($name);
 	}
 
 	/**

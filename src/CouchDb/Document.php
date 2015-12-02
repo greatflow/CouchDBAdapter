@@ -2,6 +2,7 @@
 
 namespace CouchDbAdapter\CouchDb;
 
+use InvalidArgumentException;
 
 class Document
 {
@@ -11,48 +12,81 @@ class Document
 	/** @var array */
 	private $columns = [];
 
-    public function __set($name, $value)
+    public function __construct($id = null)
     {
-        preg_match("/^set(.*)/", $name, $matches);
-
-        if (isset($matches[1]) && ! in_array($matches[1], self::RESERVED_COLUMNS)) {
-            $this->columns[lcfirst($matches[1])] = $value;
-            return $this;
+        if (isset($id)) {
+            $this->setId($id);
         }
     }
 
-    public function __get($name)
+    /**
+     *
+     * @param $name
+     * @param $value
+     * @return mixed
+     */
+    public function __call($name, $value)
     {
-        preg_match("/^get(.*)/", $name, $matches);
+        if (strpos($name, 'set') !== false) {
+            return $this->setColumn($name, $value[0]);
+        } elseif (strpos($name, 'get') !== false) {
+            return $this->getColumn($name);
+        }
 
-        if (isset($matches[1]) && ! in_array($matches[1], self::RESERVED_COLUMNS)) {
-            if (isset($this->columns[$name])) {
-                return $this->columns[$name];
-            }
+    }
+
+    /**
+     * @param $name
+     * @param $value
+     * @return $this
+     */
+    private function setColumn($name, $value)
+    {
+        $columnName = lcfirst(substr($name, 3));
+
+        if (in_array($columnName, self::RESERVED_COLUMNS)) {
+            $method = 'set' . ucfirst(ltrim($columnName, '_'));
+            throw new InvalidArgumentException("$columnName is a reserved key. Please use the $method method");
+        }
+
+        $this->columns[$columnName] = $value;
+        return $this;
+    }
+
+    /**
+     * @param $name
+     * @return mixed
+     */
+    private function getColumn($name)
+    {
+        $columnName = lcfirst(substr($name, 3));
+
+        if (in_array($columnName, self::RESERVED_COLUMNS)) {
+            $method = 'get' . ucfirst(ltrim($columnName, '_'));
+            throw new InvalidArgumentException("$columnName is a reserved key. Please use the $method method");
+        }
+
+        if (isset($this->columns[$columnName])) {
+            return $this->columns[$columnName];
         }
     }
 
     public function setId($id)
     {
         if (isset($this->columns['_id'])) {
-            throw new \InvalidArgumentException('Document id is immutable');
+            throw new InvalidArgumentException('Document id is immutable');
         }
 
-        $this->columns['_id'] = $id;
+        $this->columns['_id'] = (string) $id;
 
         return $this;
     }
 
     public function getId()
     {
-        return $this->columns['_id'];
-    }
-
-    public function setSoftDelete()
-    {
-        $this->columns['_deleted'] = true;
-
-        return $this;
+        if (isset($this->columns['_id'])) {
+            return $this->columns['_id'];
+        }
     }
 
     public function setRev($rev)
@@ -64,7 +98,14 @@ class Document
 
     public function getRev()
     {
-        return $this->columns['_rev'];
+        if (isset($this->columns['_rev'])) {
+            return $this->columns['_rev'];
+        }
+    }
+
+    public function unsetRev()
+    {
+        unset($this->columns['_rev']);
     }
 
     public function setAttachment($attachment)

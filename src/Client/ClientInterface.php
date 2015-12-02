@@ -9,10 +9,10 @@ interface ClientInterface
 	/**
 	 * @param string $method
 	 * @param string $url
+     * @param array $options
 	 * @param Document $couchDbDocument
-	 * @param array $options
 	 *
 	 * @return ResponseInterface
 	 */
-	public function request($method, $url, Document $couchDbDocument = null, $options = []);
+	public function request($method, $url, $options, Document $couchDbDocument = null);
 }

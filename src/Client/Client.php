@@ -50,7 +50,7 @@ class Client
 	{
 		$this->isValidMethod($method);
 
-		$response = $this->client->request($method, $url, $couchDbDocument, $options);
+		$response = $this->client->request($method, $url, $options, $couchDbDocument);
 
 		return $this->handleResponse($response, $method, $expectedResponseCodes, $url);
 	}

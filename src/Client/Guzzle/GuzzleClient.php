@@ -61,7 +61,7 @@ class GuzzleClient implements ClientInterface
 	 * @param array $options
 	 * @return GuzzleResponse
 	 */
-	public function request($method, $url, Document $couchDbDocument = null, $options = [])
+	public function request($method, $url, $options, Document $couchDbDocument = null)
 	{
 		$options = $this->buildRequestOptions($options, $couchDbDocument);
 
@@ -81,13 +81,11 @@ class GuzzleClient implements ClientInterface
 	 */
 	protected function buildRequestOptions($options, Document $couchDbDocument = null)
 	{
-		$requestOptions = [
-			'json' => [
-				'user' => 'test',
-				'something' => 'this is a new test',
-				'_rev' => '2-8798bb5f9fe20ec4e8b90b2f5d573081'
-			]
-		];
+        if (isset($couchDbDocument)) {
+            $requestOptions = [
+                'json' => $couchDbDocument->getColumnsAndData()
+            ];
+        }
 
 		if (isset($options['authToken'])) {
 			$requestOptions['headers'] = ['X-CouchDB-WWW-Authenticate' => 'Cookie'];
@@ -96,7 +94,8 @@ class GuzzleClient implements ClientInterface
 
 		if (isset($options['user'])) {
 			$requestOptions['auth'] = [
-				$options['auth']['username'] => $options['auth']['password']
+				$options['user']['username'],
+                $options['user']['password']
 			];
 		}
 
