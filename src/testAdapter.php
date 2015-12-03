@@ -10,13 +10,17 @@ use CouchDbAdapter\CouchDb\Server;
 use GuzzleHttp\Client as HttpClient;
 
 $guzzleClient = new GuzzleClient(new HttpClient());
-//$guzzleClient->setDebugLevel(true);
+$guzzleClient->setDebugLevel(true);
 $couchDbClient = new Client($guzzleClient);
 
 $couchDbServer = new Server($couchDbClient, '127.0.0.1');
 $couchDbServer->setAdminUser('admin', 'b0110ck5');
+$adamAuthToken = $couchDbServer->getAuthToken('adam', 'test');
 
+$couchDbServer = new Server($couchDbClient, '127.0.0.1');
+$couchDbServer->setAuthCookieToken($adamAuthToken);
 $availDatabases = $couchDbServer->listDbs();
+
 $dbName = 'test';
 if (! in_array($dbName, $availDatabases)) {
     $database = $couchDbServer->createDatabase($dbName);
@@ -25,14 +29,15 @@ if (! in_array($dbName, $availDatabases)) {
 }
 
 
-//$document = $database->getDocumentById(123456);
-//var_dump($document);
-//$database->saveDocument($document);
-$documents = $database->getAllDocuments(true);
-
-foreach ($documents as $document) {
-    var_dump($document);
-}
+$document = $database->getDocumentById(123456);
+$document->setUsingToken(['how awesome is this' =>'very']);
+$database->saveDocument($document);
+var_dump($document);
+//$documents = $database->getAllDocuments(true);
+//
+//foreach ($documents as $document) {
+//    var_dump($document);
+//}
 
 //$document = $database->copyDocument(124, 1234);
 

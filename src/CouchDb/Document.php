@@ -91,7 +91,7 @@ class Document
 
     public function setRev($rev)
     {
-        $this->data['_rev'] = $rev;
+        $this->data['_rev'] = (string) $rev;
 
         return $this;
     }

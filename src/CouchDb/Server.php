@@ -83,12 +83,29 @@ class Server
 		return $this->client;
 	}
 
+    public function getAuthToken($username, $password)
+    {
+        $this->options['getAuthToken'] = [
+            'name' => $username,
+            'password' => $password,
+        ];
+
+        $this->client->post($this->getServerUrl() . '/_session', 200, $this->getOptions());
+
+        $headers = $this->client->getLastHeaders();
+        $cookie = $headers['Set-Cookie'][0];
+        list($tokenPart) = explode(';', $cookie);
+        $tokenPart = explode('=', $tokenPart);
+
+        return $tokenPart[1];
+    }
+
 	/**
 	 * @param string $token
 	 */
 	public function setAuthCookieToken($token)
 	{
-		$this->options['authToken'] = [
+		$this->options['setAuthToken'] = [
 			'cookieName' => 'AuthSession',
 			'cookieValue' => $token,
 			'cookieDomain' => $this->host
@@ -117,7 +134,7 @@ class Server
 	 */
 	public function ping()
 	{
-		return $this->client->get($this->getUrl(), 200, $this->options);
+		return $this->client->get($this->getServerUrl(), 200, $this->getOptions());
 	}
 
 	/**
@@ -125,7 +142,7 @@ class Server
 	 */
 	public function listDbs()
 	{
-		return $this->client->get($this->getUrl() . '/_all_dbs', 200, $this->options);
+		return $this->client->get($this->getServerUrl() . '/_all_dbs', 200, $this->getOptions());
 	}
 
 	/**
@@ -134,14 +151,14 @@ class Server
 	 */
 	public function createDatabase($name)
 	{
-		$this->client->put($this->getUrl() . '/' . urlencode($name) . '/', 201, $this->options);
+		$this->client->put($this->getServerUrl() . '/' . urlencode($name) . '/', 201, $this->getOptions());
 		return $this->getDatabase($name);
 	}
 
 	/**
 	 * @return string
 	 */
-	public function getUrl()
+	public function getServerUrl()
 	{
 		return 'http' . ($this->https ? 's' : '') . "://{$this->host}:{$this->port}";
 	}

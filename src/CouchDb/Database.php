@@ -28,13 +28,24 @@ class Database
 		$this->dbName = $dbName;
 	}
 
+    /**
+     * @param Document $document
+     * @param string $newDocumentId
+     * @param string $rev
+     * @return Document
+     */
+    public function copyDocument(Document $document, $newDocumentId, $rev = null)
+    {
+        return $this->copyDocumentById($document->getId(), $newDocumentId, $rev);
+    }
+
 	/**
 	 * @param string $id
 	 * @param string $newDocumentId
 	 * @param string $rev
      * @return Document
 	 */
-	public function copyDocument($id, $newDocumentId, $rev = null)
+	public function copyDocumentById($id, $newDocumentId, $rev = null)
 	{
         $options = $this->server->getOptions();
         $options['headers'] = ['Destination' => $newDocumentId . ($rev ? "?rev={$rev}" : '')];
@@ -44,6 +55,12 @@ class Database
 		return $this->getDocument($newDocumentId);
 	}
 
+    /**
+     * By default will just return array of document details
+     * If $includeDocs is true will return a collection of documents
+     * @param bool|false $includeDocs
+     * @return DocumentCollection|array
+     */
 	public function getAllDocuments($includeDocs = false)
 	{
         $url = $this->getDatabaseUrl() . '/_all_docs';
@@ -61,7 +78,6 @@ class Database
             }
             $response = $documentCollection;
         }
-
         return $response;
 	}
 
@@ -78,7 +94,6 @@ class Database
             $response = $this->client->post($this->getDatabaseUrl(), 201, $this->server->getOptions(), $document);
             $document->setId($response['id']);
         }
-
         $document->setRev($response['rev']);
     }
 
@@ -98,7 +113,7 @@ class Database
             throw new BadMethodCallException("Cannot delete document without a revision number");
         }
 
-        $this->client->delete($this->getDocumentUrl($data['_id'], array('rev' => $document->getRev())), 200, $this->server->getOptions());
+        $this->client->delete($this->getDocumentUrl($data['_id'], array('rev' => $data['_rev'])), 200, $this->server->getOptions());
         $document->unsetRev();
     }
 
@@ -113,7 +128,6 @@ class Database
     /**
      * @param $id
      * @return Document
-     *
      * @throws CouchDbException
      */
     public function getDocumentById($id)
@@ -139,7 +153,7 @@ class Database
 	 */
 	public function getDatabaseUrl()
 	{
-		return $this->server->getUrl() . '/' . urlencode($this->dbName);
+		return $this->server->getServerUrl() . '/' . urlencode($this->dbName);
 	}
 
 	/**

@@ -19,6 +19,10 @@ class Client
 
 	protected $client;
 
+    private $lastRequestHeaders;
+
+    private $lastRequestBody;
+
 	/**
 	 * @param ClientInterface $client The client that will send requests to the CouchDB server
 	 */
@@ -38,12 +42,26 @@ class Client
 		return call_user_func_array(array($this, 'sendRequest'), $args);
 	}
 
+    public function getLastHeaders()
+    {
+        return $this->lastRequestHeaders;
+    }
+
+    public function getLastRequestBody($asArray = fasle)
+    {
+        if ($asArray) {
+            return json_decode($this->lastRequestBody, true);
+        }
+
+        return $this->lastRequestBody;
+    }
+
 	/**
 	 * @param string $method
 	 * @param string $url
 	 * @param array $expectedResponseCodes
 	 * @param array $options
-	 * @param Document|nulll $document
+	 * @param Document|null $document
 	 * @return mixed
 	 */
 	private function sendRequest($method, $url, $expectedResponseCodes, $options, Document $document = null)
@@ -71,31 +89,16 @@ class Client
 	 * @param $method
 	 * @param int $expectedResponseCode
 	 * @param $url
-	 * @return mixed
+	 * @return array
 	 * @throw CouchDbAdapter\Exceptions\CouchDbException
 	 */
 	private function handleResponse(ResponseInterface $response, $method, $expectedResponseCode, $url)
 	{
-		$response = $this->parseResponse($response);
-		$statusCode = $response['statusCode'];
-
-		if ($statusCode == $expectedResponseCode) {
-			return json_decode($response['body'], true);
+		if ($response->getStatusCode() == $expectedResponseCode) {
+            $this->lastRequestHeaders = $response->getHeaders();
+            $this->lastRequestBody = $response->getBody();
+			return json_decode($this->lastRequestBody, true);
 		}
-
 		throw ClientExceptionFactory::factory($response, $method, $url);
-	}
-
-	/**
-	 * @param ResponseInterface $response
-	 * @return array
-	 */
-	private function parseResponse(ResponseInterface $response)
-	{
-		$responseArray['statusCode'] = $response->getStatusCode();
-		$responseArray['body'] = $response->getBody();
-		$responseArray['headers'] = $response->getHeaders();
-
-		return $responseArray;
 	}
 }

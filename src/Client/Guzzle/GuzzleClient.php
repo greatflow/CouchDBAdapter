@@ -89,18 +89,18 @@ class GuzzleClient implements ClientInterface
         $requestOptions = ['headers' => []];
 
         if (isset($document)) {
-            $requestOptions = [
-                'json' => $document->getData()
-            ];
+            $requestOptions['json'] = $document->getData();
+        } elseif (isset($options['getAuthToken'])) {
+            $requestOptions['json'] = $options['getAuthToken'];
         }
 
         if (isset($options['headers'])) {
             $requestOptions['headers'] += $options['headers'];
         }
 
-		if (isset($options['authToken'])) {
+		if (isset($options['setAuthToken'])) {
 			$requestOptions['headers'] += ['X-CouchDB-WWW-Authenticate' => 'Cookie'];
-			$requestOptions['cookies'] = $this->buildAuthCookie($requestOptions['authToken']);
+			$requestOptions['cookies'] = $this->buildAuthCookie($options['setAuthToken']);
 		}
 
 		if (isset($options['user'])) {
