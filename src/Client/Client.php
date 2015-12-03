@@ -47,7 +47,7 @@ class Client
         return $this->lastRequestHeaders;
     }
 
-    public function getLastRequestBody($asArray = fasle)
+    public function getLastRequestBody($asArray = false)
     {
         if ($asArray) {
             return json_decode($this->lastRequestBody, true);

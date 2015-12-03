@@ -1,6 +1,7 @@
 <?php
 namespace CouchDbAdapter\Exceptions;
 
+use CouchDbAdapter\Client\ResponseInterface;
 use Exception;
 
 /**
@@ -14,14 +15,14 @@ use Exception;
 class CouchDbException extends Exception
 {
 	/**
-	 * @param array $response
+	 * @param ResponseInterface $response
 	 * @param string $method
 	 * @param string $url
 	 */
-	public function __construct(array $response, $method, $url)
+	public function __construct(ResponseInterface $response, $method, $url)
 	{
-		if (isset($response['body']) && ! empty($response['body'])) {
-			$message = $response['body'];
+		if (! empty($response->getBody())) {
+			$message = $response->getBody();
 		}
 
 		if (isset($message)) {
@@ -30,6 +31,6 @@ class CouchDbException extends Exception
 			$message = "$method $url";
 		}
 
-		parent::__construct($message, isset($response['statusCode']) ? $response['statusCode'] : null);
+		parent::__construct($message, $response->getStatusCode());
 	}
 }

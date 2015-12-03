@@ -83,6 +83,11 @@ class Server
 		return $this->client;
 	}
 
+    /**
+     * @param $username
+     * @param $password
+     * @return string
+     */
     public function getAuthToken($username, $password)
     {
         $this->options['getAuthToken'] = [
@@ -154,6 +159,91 @@ class Server
 		$this->client->put($this->getServerUrl() . '/' . urlencode($name) . '/', 201, $this->getOptions());
 		return $this->getDatabase($name);
 	}
+
+    /**
+     * Creates a new CouchDB server administrator
+     *
+     * @param string $username administrator username
+     * @param string $password administrator password
+     * @throws InvalidArgumentException|Exception|CouchDbException
+     */
+    public function createAdmin($username, $password)
+    {
+        $username = urlencode($username);
+        $this->options['json'] = (string) $password;
+
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        if (strlen($password) < 1) {
+            throw new InvalidArgumentException("Password can't be empty");
+        }
+
+        $url = $this->getServerUrl() . '/_config/admins/' . urlencode($username);
+
+        $this->client->put($url, 200, $this->getOptions());
+    }
+
+    /**
+     * Permanently removes a CouchDB Server administrator
+     *
+     * @param string $username administrator username
+     * @throws InvalidArgumentException
+     */
+    public function deleteAdmin($username)
+    {
+        $username = urlencode($username);
+
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        $url = $this->getServerUrl() . '/_config/admins/' . urlencode($username);
+        $this->client->delete($url, 200, $this->getOptions());
+    }
+
+    /**
+     * @param string $username
+     * @param string $password
+     * @param array $roles
+     * @throws InvalidArgumentException
+     */
+    public function createUser($username, $password, $roles = array())
+    {
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        if (strlen($password) < 1) {
+            throw new InvalidArgumentException("Password can't be empty");
+        }
+
+        $document = new Document();
+        $document->setName($username)
+            ->setType('user')
+            ->setRoles($roles)
+            ->setPassword((string) $password);
+
+        $url = $this->getServerUrl() . "/_users/org.couchdb.user:{$username}";
+        $this->client->put($url, 201, $this->getOptions(), $document);
+    }
+
+    /**
+     * @param string $username
+     * @throws InvalidArgumentException
+     */
+    public function deleteUser($username)
+    {
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        $database = $this->getDatabase('_users');
+        $userDocument = $database->getDocumentById("org.couchdb.user:{$username}");
+
+        $database->deleteDocument($userDocument);
+    }
 
 	/**
 	 * @return string

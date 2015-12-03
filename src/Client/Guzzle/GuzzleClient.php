@@ -92,6 +92,8 @@ class GuzzleClient implements ClientInterface
             $requestOptions['json'] = $document->getData();
         } elseif (isset($options['getAuthToken'])) {
             $requestOptions['json'] = $options['getAuthToken'];
+        } elseif (isset($options['json'])) {
+            $requestOptions['json'] = $options['json'];
         }
 
         if (isset($options['headers'])) {
@@ -113,7 +115,7 @@ class GuzzleClient implements ClientInterface
 		if ($this->debug) {
 			$requestOptions['debug'] = true;
 		}
-
+var_dump($requestOptions);
 		return $requestOptions;
 	}
 }

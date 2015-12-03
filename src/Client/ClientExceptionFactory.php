@@ -17,20 +17,19 @@ class ClientExceptionFactory
 	];
 
 	/**
-	 * @param $response
-	 * @param $method
-	 * @param $url
-	 *
+	 * @param ResponseInterface $response
+	 * @param string $method
+	 * @param string $url
 	 * @return mixed
 	 */
-	public static function factory($response, $method, $url)
+	public static function factory(ResponseInterface $response, $method, $url)
 	{
 		if (! $response) {
 			return new CouchDbNoResponseException();
 		}
 
-		if (isset($response['statusCode']) && in_array($response['statusCode'], self::COUCH_STATUS_CODES)) {
-			$couchDbException = self::COUCH_STATUS_CODES[$response['statusCode']];
+		if (in_array($response->getStatusCode(), self::COUCH_STATUS_CODES)) {
+			$couchDbException = self::COUCH_STATUS_CODES[$response->getStatusCode()];
 			return new $couchDbException($response, $method, $url);
 		} else {
 			return new CouchDbException($response, $method, $url);
