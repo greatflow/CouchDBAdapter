@@ -10,9 +10,11 @@ use CouchDbAdapter\CouchDb\Server;
 use GuzzleHttp\Client as HttpClient;
 
 $guzzleClient = new GuzzleClient(new HttpClient());
-$guzzleClient->setDebugLevel(true);
+//$guzzleClient->setDebugLevel(true);
 $couchDbClient = new Client($guzzleClient);
 
 $couchDbServer = new Server($couchDbClient, '127.0.0.1');
 $couchDbServer->setAdminUser('admin', 'b0110ck5');
-$couchDbServer->deleteUser('john');
+
+$couchDbServer->addDatabaseMember('test', 'bob', ['job']);
+//$couchDbServer->removeDatabaseMember('test', 'adam');

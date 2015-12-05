@@ -115,7 +115,7 @@ class GuzzleClient implements ClientInterface
 		if ($this->debug) {
 			$requestOptions['debug'] = true;
 		}
-var_dump($requestOptions);
+
 		return $requestOptions;
 	}
 }

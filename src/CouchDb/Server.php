@@ -135,14 +135,6 @@ class Server
 	}
 
 	/**
-	 * Check that the server responds
-	 */
-	public function ping()
-	{
-		return $this->client->get($this->getServerUrl(), 200, $this->getOptions());
-	}
-
-	/**
 	 * @return array
 	 */
 	public function listDbs()
@@ -172,12 +164,8 @@ class Server
         $username = urlencode($username);
         $this->options['json'] = (string) $password;
 
-        if (strlen($username) < 1) {
-            throw new InvalidArgumentException("Username can't be empty");
-        }
-
-        if (strlen($password) < 1) {
-            throw new InvalidArgumentException("Password can't be empty");
+        if ((strlen($username) < 1) || (strlen($password) < 1)) {
+            throw new InvalidArgumentException("Details can't be empty");
         }
 
         $url = $this->getServerUrl() . '/_config/admins/' . urlencode($username);
@@ -211,12 +199,8 @@ class Server
      */
     public function createUser($username, $password, $roles = array())
     {
-        if (strlen($username) < 1) {
-            throw new InvalidArgumentException("Username can't be empty");
-        }
-
-        if (strlen($password) < 1) {
-            throw new InvalidArgumentException("Password can't be empty");
+        if ((strlen($username) < 1) || (strlen($password) < 1)) {
+            throw new InvalidArgumentException("Details can't be empty");
         }
 
         $document = new Document();
@@ -243,6 +227,153 @@ class Server
         $userDocument = $database->getDocumentById("org.couchdb.user:{$username}");
 
         $database->deleteDocument($userDocument);
+    }
+
+    /**
+     * @param $dbName
+     * @return Document
+     */
+    private function getSecurity($dbName)
+    {
+        $url = $this->getServerUrl() . "/{$dbName}/_security";
+        $response = $this->client->get($url, 200, $this->getOptions());
+
+        $securityDocument = new Document();
+        $securityDocument->populateFromArray($response);
+
+        return $securityDocument;
+    }
+
+    /**
+     * @param Document $securityDocument
+     * @param string $dbName
+     * @return ResponseInterface
+     */
+    private function setSecurity(Document $securityDocument, $dbName)
+    {
+        $url = $this->getServerUrl() . "/{$dbName}/_security";
+        return $this->client->put($url, 200, $this->getOptions(), $securityDocument);
+    }
+
+    /**
+     * @param $dbName
+     * @param $username
+     * @param array $roles
+     * @throws InvalidArgumentException
+     */
+    public function addDatabaseMember($dbName, $username, $roles = [])
+    {
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        $securityDocument = $this->getSecurity($dbName);
+
+        $this->buildSecurityDocument('members', false, $securityDocument, $username, $roles);
+
+        $this->setSecurity($securityDocument, $dbName);
+    }
+
+    /**
+     * @param $dbName
+     * @param $username
+     * @param array $roles
+     * @throws InvalidArgumentException
+     */
+    public function addDatabaseAdmin($dbName, $username, $roles = [])
+    {
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Login can't be empty");
+        }
+
+        $securityDocument = $this->getSecurity($dbName);
+
+        $this->buildSecurityDocument($securityDocument, 'admins', $username, $roles);
+
+        $this->setSecurity($securityDocument, $dbName);
+    }
+
+    /**
+     * @param $userType
+     * @param bool|false $delete
+     * @param Document $securityDocument
+     * @param $username
+     * @param array $roles
+     * @return bool
+     */
+    private function buildSecurityDocument($userType, $delete, Document $securityDocument, $username, $roles = [])
+    {
+        $members = $securityDocument->getMembers();
+        $admins = $securityDocument->getAdmins();
+
+        if (is_null($members)) {
+            $members = ['names' => [], 'roles' => []];
+        }
+
+        if (is_null($admins['names'])) {
+            $admins = ['names' => [], 'roles' => []];
+        }
+
+        if ($delete) {
+            if (! in_array($username, ${$userType}['names'])) {
+                return true;
+            }
+
+            $names = array_filter(${$userType}['names'], function($value) use ($username) {
+                if ($value != $username) {
+                    return true;
+                }
+            });
+
+            ${$userType}['names'] = $names;
+        } else {
+            if (! in_array($username, ${$userType}['names'])) {
+                array_push(${$userType}['names'], $username);
+            }
+
+            ${$userType}['roles'] = array_unique(array_merge(${$userType}['roles'], $roles));
+        }
+
+        $securityDocument->setAdmins($admins);
+        $securityDocument->setMembers($members);
+    }
+
+    /**
+     * @param $dbName
+     * @param $username
+     * @return bool
+     * @throws InvalidArgumentException
+     */
+    public function removeDatabaseMember($dbName, $username)
+    {
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        $securityDocument = $this->getSecurity($dbName);
+
+        $this->buildSecurityDocument('members', true, $securityDocument, $username);
+
+        $this->setSecurity($securityDocument, $dbName);
+    }
+
+    /**
+     * @param $dbName
+     * @param $username
+     * @return bool
+     * @throws InvalidArgumentException
+     */
+    public function removeDatabaseAdmin($dbName, $username)
+    {
+        if (strlen($username) < 1) {
+            throw new InvalidArgumentException("Username can't be empty");
+        }
+
+        $securityDocument = $this->getSecurity($dbName);
+
+        $this->buildSecurityDocument('admins', true, $securityDocument, $username);
+
+        $this->setSecurity($securityDocument, $dbName);
     }
 
 	/**
