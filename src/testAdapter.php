@@ -16,5 +16,5 @@ $couchDbClient = new Client($guzzleClient);
 $couchDbServer = new Server($couchDbClient, '127.0.0.1');
 $couchDbServer->setAdminUser('admin', 'b0110ck5');
 
-$couchDbServer->addDatabaseMember('test', 'bob', ['job']);
-//$couchDbServer->removeDatabaseMember('test', 'adam');
+//$couchDbServer->addDatabaseMember('test', 'bob', ['job']);
+$couchDbServer->removeDatabaseAdmin('test', '', ['job']);
