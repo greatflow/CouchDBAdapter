@@ -1,5 +1,5 @@
 {
-  "name": "CouchDBAdapter",
+  "name": "superpanda19/CouchDBAdapter",
   "description": "A CouchDB adapter using Guzzle HTTP client",
   "keywords": [
     "guzzle",
